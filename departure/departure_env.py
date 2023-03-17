@@ -19,6 +19,7 @@ class Departure:
 
     def __init__(self, task_name="departure", time=datetime(2020, 2, 2)):
         self.task_name = task_name
+        self.time=time
         # Initial conditions
         self.initial_lat, self.initial_lon, self.initial_alt, self.initial_cas, self.initial_heading = 22.343216667,  114.027533333, 4500, 205, 80 
         self.initial_path_angle, self.initial_bank_angle = 1, 0
@@ -70,19 +71,18 @@ class Departure:
     
     def reset(self, time=datetime(2020, 2, 2), write_csv=False):
         self.global_time = 0
+        self.time=time
 
         self.writer = None
         if write_csv:
             file_name = self.task_name+'-'+datetime.utcnow().isoformat(timespec='seconds')
-            folder_path = Path(__file__).parent.parent.parent.resolve().joinpath('data/replay/simulation/'+file_name)
+            folder_path = Path(__file__).parent.parent.parent.resolve().joinpath('result/'+file_name)
             folder_path.mkdir()
             file_path =  folder_path.joinpath(file_name+'.csv')
             self.writer = csv.writer(open(file_path, 'w+'))
-            header = ['timestep','timestamp', 'id', 'callsign', 'lat', 'long', 'alt',
-                            'cas', 'tas', 'mach', 'vs', 
-                            'heading', 'bank_angle', 'path_angle',
-                            'mass', 'fuel_consumed', 
-                            'thrust', 'drag', 'esf', 'accel']
+            header = ['timestep', 'timestamp', 'id', 'callsign', 
+                      'lat', 'long', 'alt', 'cas', 'heading', 'bank_angle', 'path_angle',
+                      'mass', 'fuel_consumed', 'noise']
             self.writer.writerow(header)
 
         self.aircraft.reset(current_time=time, lat=self.initial_lat, lon=self.initial_lon, alt=self.initial_alt, 
@@ -100,6 +100,7 @@ class Departure:
 
     def step(self, action):
         assert len(action) == 3
+
         total_fuel = 0
         for _ in range(10):
             self.aircraft.change_heading(3*action[0])       # min: -3deg/s, max: 3deg/s
@@ -108,27 +109,27 @@ class Departure:
             lat, lon, alt, head, bank, cas, fuel, _ =  self.aircraft.update()
             self.global_time += 1
             # dump to csv
-            self.save()
+            self.save(lat, lon, alt, head, bank, cas, fuel)
             total_fuel += fuel
             
             if not self.in_circle(lat, lon):
                 distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
                 noise_impact = self.noise_pollution_level(lat, lon, alt)
-                reward = -total_fuel/10 - noise_impact*self.noise_factor +\
-                        2*(self.last_distance - distance_to_target) + 2*(10/(distance_to_target+1) - distance_to_target) +\
+                reward = -total_fuel/10 - self.noise_factor*noise_impact +\
+                        3*(self.last_distance - distance_to_target) + 3*(10/(distance_to_target+1) - distance_to_target) +\
                         (alt - self.last_alt)/500 - abs(alt-self.target_alt)/10 +\
                         (cas - self.last_cas)/20 - abs(cas-self.target_cas)
-                        
-                return self.state_adapter(lat, lon, alt, head, bank, cas), reward, True, True, (self.global_time, total_fuel)
+
+                return self.state_adapter(lat, lon, alt, head, bank, cas), reward, True, True, (self.global_time, total_fuel, noise_impact)
         
         
         distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
         noise_impact = self.noise_pollution_level(lat, lon, alt)
-        reward = -total_fuel/10 - noise_impact*self.noise_factor +\
-                    2*(self.last_distance - distance_to_target) +\
+        reward = -total_fuel/10 - self.noise_factor*noise_impact +\
+                    3*(self.last_distance - distance_to_target) +\
                     (alt - self.last_alt)/500 +\
                     (cas - self.last_cas)/20
-        
+
         # print(self.last_cas, cas)
         # print(f"Reward {reward}: fuel {total_fuel}, noise {noise_impact}, distance {self.last_distance - distance_to_target}, alt {(alt - self.last_alt)/3281}, cas {(cas - self.last_cas)/20}")
 
@@ -141,20 +142,48 @@ class Departure:
         if self.global_time >= self.time_limit:
             terminated = True
         
-        return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, False, (self.global_time, total_fuel)
+        return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, False, (self.global_time, total_fuel, noise_impact)
+    
+        # self.aircraft.change_heading(3*action[0])       # min: -3deg/s, max: 3deg/s
+        # self.aircraft.change_cas(2*(action[1]+1))       # max: 2 knots/s
+        # self.aircraft.change_altitude(50*(action[2]+1)) # max: 50 ft/s
+        
+        # lat, lon, alt, head, bank, cas, fuel, _ =  self.aircraft.update()
+        # distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
+        # noise_impact = self.noise_pollution_level(lat, lon, alt)
+        # reward = -fuel - 10*noise_impact +\
+        #             10*(self.last_distance - distance_to_target) +\
+        #             (alt - self.last_alt)/50 +\
+        #             (cas - self.last_cas)/2
+        
+        # # Update
+        # self.last_alt, self.last_cas = alt, cas
+        # self.last_distance = distance_to_target
+        
+        # dead, terminated = False, False
+        # # Out of the circle
+        # if not self.in_circle(lat, lon):
+        #     dead, terminated = True, True 
+        #     reward += 2*(10/(distance_to_target+1) - distance_to_target) - abs(alt-self.target_alt)/10 - abs(cas-self.target_cas)
+        # # Check out of time
+        # if self.global_time >= self.time_limit: terminated = True
 
-    def save(self):
+        # # dump to csv
+        # self.global_time += 1
+        # self.save(lat, lon, alt, head, bank, cas, noise_impact)
+
+        # return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, dead, (self.global_time, fuel, noise_impact)
+
+    def save(self, lat, lon, alt, head, bank, cas, noise):
         """
         Save all states variable of one timestemp to csv file.
         """
         if self.writer:
-            data = np.column_stack((np.full(len(self.traffic.index), self.global_time), np.full(len(self.traffic.index), (datetime.now() + timedelta(seconds=self.global_time)).isoformat(timespec='seconds')), self.traffic.index, self.traffic.call_sign, self.traffic.lat, self.traffic.long, self.traffic.alt,
-                                    self.traffic.cas, self.traffic.tas, self.traffic.mach, self.traffic.vs,
-                                    self.traffic.heading, self.traffic.bank_angle, self.traffic.path_angle,
-                                    self.traffic.mass, self.traffic.fuel_consumed,
-                                    self.traffic.perf.thrust, self.traffic.perf.drag, self.traffic.perf.esf, self.traffic.accel)) # mode
+            data = [self.global_time, (self.time + timedelta(seconds=self.global_time)).isoformat(timespec='seconds'), 0, self.aircraft.call_sign, 
+                    lat, lon, alt, cas, head, bank, self.aircraft.path_angle,
+                    self.aircraft.mass, self.aircraft.consumed_fuel, noise]
             
-            self.writer.writerows(data)
+            self.writer.writerow(data)
     
     def noise_pollution_level(self, latitude, longitude, altitude, threshold=55):
         if threshold == 70:

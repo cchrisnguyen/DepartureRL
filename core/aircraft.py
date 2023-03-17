@@ -41,6 +41,7 @@ class Aircraft:
         self.rate_of_turn = self.perf.cal_rate_of_turn(self.bank_angle, self.tas)
 
         self.max_cas = Unit.kts2mps(350) # Unit.kts2mps(self.perf.cal_maximum_speed()[0])
+        self.max_bank_angle = self.perf.get_norminal_bank_angle()
         #----------------------------- Autopilot -------------------------
         self.ap_heading = self.heading
         self.ap_cas = self.cas
@@ -104,12 +105,11 @@ class Aircraft:
 
         # Bank angle
         r_rate_of_turn = Cal.cal_angle_diff(self.heading, self.ap_heading)
-        best_bank_angle = self.bank_angle + np.sign(r_rate_of_turn)*5           # Choose 5 deg/s as the maximum bank angle rate
-        if np.abs(best_bank_angle) > self.perf.get_norminal_bank_angle():
-            best_bank_angle = np.sign(best_bank_angle)*self.perf.get_norminal_bank_angle()                   
-        a_rate_of_turn = self.perf.cal_rate_of_turn(best_bank_angle, self.tas)
-        self.rate_of_turn = r_rate_of_turn if (r_rate_of_turn - a_rate_of_turn)*(r_rate_of_turn - self.rate_of_turn)<0 else a_rate_of_turn
-        self.bank_angle = self.perf.cal_bank_angle(self.rate_of_turn, self.tas) # Update before or after tas update?
+        r_bank_angle = self.perf.cal_bank_angle(r_rate_of_turn, self.tas)
+        self.bank_angle += max(min(r_bank_angle - self.bank_angle, 5),-5) # Choose 5 deg/s as the maximum bank angle rate
+        self.bank_angle = max(min(self.bank_angle, self.max_bank_angle),-self.max_bank_angle)
+        self.rate_of_turn = self.perf.cal_rate_of_turn(self.bank_angle, self.tas)
+
         self.heading += self.rate_of_turn
         self.heading = (self.heading+360) % 360
         

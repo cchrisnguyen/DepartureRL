@@ -30,15 +30,12 @@ class PrioritizedReplay(object):
         """
         return min(1.0, self.beta_start + frame_idx * (1.0 - self.beta_start) / self.beta_frames)
     
-    def store(self, state, action, reward, next_state, done):
-        assert state.ndim == next_state.ndim
-        state      = np.expand_dims(state, 0)
-        action      = np.expand_dims(action, 0)
-        next_state = np.expand_dims(next_state, 0)
+    def store(self, states, actions, rewards, next_states, deads):
+        n_samples = len(states)
         max_prio = max(self.priorities) if self.buffer else 1.0 # gives max priority if buffer is not empty else 1
         
-        self.buffer.appendleft((state, action, reward, next_state, done))
-        self.priorities.appendleft(max_prio)
+        self.buffer.extendleft(zip(states, actions, rewards, next_states, deads))
+        self.priorities.extendleft([max_prio]*n_samples)
         self.rollout_steps += 1
     
     def sample(self, batch_size, c_k):
@@ -66,7 +63,7 @@ class PrioritizedReplay(object):
         weights  = np.array(weights, dtype=np.float32) 
         
         states, actions, rewards, next_states, dones = zip(*samples) 
-        return np.concatenate(states), np.concatenate(actions), rewards, np.concatenate(next_states), dones, indices, weights
+        return np.vstack(states), np.vstack(actions), rewards, np.vstack(next_states), dones, indices, weights
     
     def update_priorities(self, batch_indices, batch_priorities):
         for idx, prio in zip(batch_indices, batch_priorities):

@@ -42,8 +42,11 @@ class ParameterServer(object):
         return weights
 
 
-    def write(self, worker_id, ep, reward):
-        if self.writer: self.writer.add_scalar(f'Reward_worker{worker_id}', reward, global_step=ep)
+    def write(self, worker_id, ep, reward, operational_cost, noise_cost):
+        if self.writer: 
+            self.writer.add_scalar(f'Worker{worker_id}_Reward', reward, global_step=ep)
+            self.writer.add_scalar(f'Worker{worker_id}_Operation', operational_cost, global_step=ep)
+            self.writer.add_scalar(f'Worker{worker_id}_Noise', noise_cost, global_step=ep)
         if worker_id==1 and ep % self.config.save_interval == 0: self.save(ep)
 
     def write_evaluation(self, ep, reward):

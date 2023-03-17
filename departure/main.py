@@ -42,7 +42,7 @@ def run(rank, config):
         w_rrefs  = []
         for w_rank in range(config.n_rollout_threads):
             w_info = rpc.get_worker_info(str(w_rank + 3))
-            w_rrefs.append(remote(w_info, Worker, args=(Departure, ps_ref, buffer_ref, config.hid_shape, config.seed)))
+            w_rrefs.append(remote(w_info, Worker, args=(Departure, ps_ref, buffer_ref, config.hid_shape)))
 
         l_rref = remote(rpc.get_worker_info('learner'), SAC,
                             args=(Departure,
@@ -111,7 +111,7 @@ if __name__ == '__main__':
                         help='the number of experience records in replay buffer that the agent start learning')
     parser.add_argument('--learn_after_rollout', default=1000, type=int,
                         help='the number of updates after finishing all roll-out tasks')
-    parser.add_argument("--batch_size", default=512, type=int,
+    parser.add_argument("--batch_size", default=1024, type=int,
                         help="Batch size for training")
     
     parser.add_argument('--save_interval', type=int, default=50, help='Model saving interval, in epochs.')
