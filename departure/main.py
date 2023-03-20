@@ -101,7 +101,7 @@ if __name__ == '__main__':
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--n_rollout_threads", default=4, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=10000, type=int)
+    parser.add_argument("--n_episodes", default=2000, type=int)
     parser.add_argument('--random_exploration_episodes', default=200, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
     
@@ -111,13 +111,13 @@ if __name__ == '__main__':
                         help='the number of experience records in replay buffer that the agent start learning')
     parser.add_argument('--learn_after_rollout', default=1000, type=int,
                         help='the number of updates after finishing all roll-out tasks')
-    parser.add_argument("--batch_size", default=512, type=int,
+    parser.add_argument("--batch_size", default=1024, type=int,
                         help="Batch size for training")
     
     parser.add_argument('--save_interval', type=int, default=50, help='Model saving interval, in epochs.')
     parser.add_argument('--eval_interval', type=int, default=20, help='Model evaluating interval, in epochs.')
 
-    parser.add_argument('--hid_shape', nargs='+', default = [256, 128, 128, 64], type=int)
+    parser.add_argument('--hid_shape', nargs='+', default = [256, 256, 128], type=int)
     parser.add_argument("--alpha", default=0.2, type=float)
     parser.add_argument("--adaptive_alpha", default=False, type=bool)
     parser.add_argument("--pi_lr", default=1e-5, type=float)

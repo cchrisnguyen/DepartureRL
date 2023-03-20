@@ -60,8 +60,8 @@ class Departure:
         return (center_lat - lat)**2 + (center_lon - lon)**2 < radius_square
     
     def state_adapter(self, lat, lon, alt, heading, bank, cas):
-        lat = lat - self.target_lat
-        lon = lon - self.target_lon
+        lat = lat - self.initial_lat
+        lon = lon - self.initial_lon
         alt = (alt - 10000)/10000
         cos = np.cos(heading*np.pi/180)
         sin = np.sin(heading*np.pi/180)
@@ -119,9 +119,9 @@ class Departure:
                 distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
                 # noise_impact = self.noise_pollution_level(lat, lon, alt)
                 reward = -total_fuel/10 - self.noise_factor*total_noise +\
-                        2*(self.last_distance - distance_to_target) + 2*(10/(distance_to_target+1) - distance_to_target+100) +\
-                        (alt - self.last_alt)/500 - abs(alt-self.target_alt)/10 +\
-                        (cas - self.last_cas)/20 - abs(cas-self.target_cas)
+                        4*(self.last_distance - distance_to_target) +\
+                        (alt - self.last_alt)/500 +\
+                        (cas - self.last_cas)/20
 
                 return self.state_adapter(lat, lon, alt, head, bank, cas), reward, True, True, (self.global_time, total_fuel, noise_impact)
         
@@ -129,7 +129,7 @@ class Departure:
         distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
         # noise_impact = self.noise_pollution_level(lat, lon, alt)
         reward = -total_fuel/10 - self.noise_factor*total_noise +\
-                    2*(self.last_distance - distance_to_target) +\
+                    4*(self.last_distance - distance_to_target) +\
                     (alt - self.last_alt)/500 +\
                     (cas - self.last_cas)/20
 
@@ -194,5 +194,10 @@ class Departure:
 env = Departure()
 env.reset()
 # Heading, Acceleration (knot/s), altitude change (ft/s)
-print(env.step([0, -1, 1]))
+# time0 = datetime.now()
+# for i in range(1000):
+#     env.step([0, -1, -1])
+# print(datetime.now()-time0)
+# print(env.step([1, -1, -1]))
+# print(env.step([0, -1, -1]))
 # print(env.last_distance)

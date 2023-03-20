@@ -66,7 +66,7 @@ class Worker:
                 state = next_state
 
             # End one episode
-            print(f'Worker: {self.id-2:2d}\t\tEpisode: {ep+1:5d}\t\tReward:\t{ep_reward:8.2f}\tFinal position: {state[0]:7.4f} {state[1]:7.4f} {state[2]:7.4f} {state[6]:7.4f}\t\tInfo: {info[0]}', flush=True)
+            print(f'Worker: {self.id-2:2d}\tEpisode: {ep+1:5d}\tReward:\t{ep_reward:8.2f}\tFinal position: {state[0] + self.env.initial_lat - self.env.target_lat:7.4f} {state[1]+ self.env.initial_lon - self.env.target_lon:7.4f} {state[2]:7.4f} {state[6]:7.4f}\t\tInfo: {info[0]}', flush=True)
             # print(f"Done in {datetime.now()-time0}, {time2 -time1}, {time3 -time2}, {time4 -time3}")
             _remote_method(ParameterServer.write, self.p_rref, self.id-3, ep+1, ep_reward, operational_cost, noise_cost)
             if deterministic and self.id==3: _remote_method(ParameterServer.write_evaluation, self.p_rref, ep+1, ep_reward)
