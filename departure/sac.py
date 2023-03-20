@@ -149,7 +149,7 @@ class SAC(object):
                 break
             time.sleep(3)
 
-        K = 40
+        K = 20
         eta_t = 0.996
         while count_down > 0:
             for k in range(1,K):
