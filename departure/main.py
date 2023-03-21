@@ -4,7 +4,7 @@ import torch.distributed.rpc as rpc
 import torch.multiprocessing as mp
 from torch.distributed.rpc import rpc_async, remote
 
-from departure_env import Departure
+from departure_env2 import Departure
 from sac import SAC
 from misc import _call_method, _remote_method
 from worker import Worker
@@ -99,10 +99,10 @@ if __name__ == '__main__':
     parser.add_argument('--model_index', type=int, default=5, help='which epoch to load')
 
     parser.add_argument("--seed", default=1, type=int)
-    parser.add_argument("--n_rollout_threads", default=4, type=int)
+    parser.add_argument("--n_rollout_threads", default=5, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=2000, type=int)
-    parser.add_argument('--random_exploration_episodes', default=200, type=int)
+    parser.add_argument("--n_episodes", default=1000, type=int)
+    parser.add_argument('--random_exploration_episodes', default=400, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
     
     parser.add_argument('--update_freq', default=1, type=int,

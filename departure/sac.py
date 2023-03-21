@@ -7,7 +7,6 @@ import time
 
 from misc import soft_update, hard_update, enable_gradients, disable_gradients, _call_method, _remote_method
 from critic import Q_Critic
-from worker import Worker
 from replay_buffer import PrioritizedReplay
 from parameter_server import ParameterServer
 from policy import Policy
@@ -201,8 +200,8 @@ class SAC(object):
         while not done:
             # Take deterministic actions at test time
             a = self.policy.select_action(s, deterministic=True)
-            s_prime, r, done, _, _ = env.step(a)
-            print(s, a, r, s_prime)
+            s_prime, r, done, _, info = env.step(a)
+            print(s, a, r, s_prime, info[1])
             ep_r += r
             s = s_prime
         return ep_r

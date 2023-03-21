@@ -116,13 +116,12 @@ class Aircraft:
         # Change speed
         r_tas = self.perf.cas_to_tas(self.ap_cas, self.p, self.rho)
         r_dVdt = r_tas - self.tas
-        
         r_dhdt = self.ap_alt - self.alt
         # r_dhdt = r_dhdt if np.abs(r_dhdt) < np.abs(self.tas + r_dVdt) else np.sign(r_dhdt)*np.abs(self.tas + r_dVdt)
         
         drag = self.perf.cal_aerodynamic_drag(self.tas, self.vs, self.bank_angle, self.mass, self.rho, self.config, 1.0)
         h_max = self.perf.cal_maximum_altitude(self.d_T, self.mass)
-        max_thrust = self.perf.cal_max_climb_to_thrust(Unit.m2ft(self.alt), Unit.mps2kts(self.tas), self.d_T)*self.perf.cal_reduced_climb_power(self.mass, self.alt, h_max)
+        max_thrust = 2*self.perf.cal_max_climb_to_thrust(Unit.m2ft(self.alt), Unit.mps2kts(self.tas), self.d_T)*self.perf.cal_reduced_climb_power(self.mass, self.alt, h_max)
         # print(self.perf.cal_reduced_climb_power(self.mass, self.alt, h_max))
         for _ in range(10):
             r_thrust = drag + self.mass*(self.G0*r_dhdt/self.tas +r_dVdt)
@@ -160,7 +159,7 @@ class Aircraft:
         self.fuel -= fuel_burn
         self.mass -= fuel_burn
 
-        # print(self.lat, self.lon, Unit.m2ft(self.alt), self.heading, self.bank_angle, Unit.mps2kts(self.cas), fuel_burn, thrust)
+        # print(self.lat, self.lon, Unit.m2ft(self.alt), self.heading, self.bank_angle, Unit.mps2kts(self.cas), fuel_burn, thrust, r_dVdt)
         return self.lat, self.lon, Unit.m2ft(self.alt), self.heading, self.bank_angle, Unit.mps2kts(self.cas), fuel_burn, self.failure
     
     # def get_lat(self):
