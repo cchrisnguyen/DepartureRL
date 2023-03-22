@@ -39,6 +39,10 @@ class Departure:
         # Final conditions
         self.target_lat, self.target_lon, self.target_alt, self.target_cas = 21.97805556, 114.9108333, 20000, 350
         
+        # virtual target
+        self.vt_lat = self.initial_lat + (self.target_lat - self.initial_lat)*1.03
+        self.vt_lon = self.initial_lon + (self.target_lon - self.initial_lon)*1.03
+
         # Noise impact factor
         self.noise_factor = 1.0
 
@@ -48,7 +52,7 @@ class Departure:
         
         # Last records
         self.last_alt, self.last_cas = self.initial_alt, self.initial_cas
-        self.last_distance = great_circle_distance(self.initial_lat, self.initial_lon, self.target_lat, self.target_lon)
+        self.last_distance = great_circle_distance(self.initial_lat, self.initial_lon, self.vt_lat, self.vt_lon)
 
     def seed(self, seed):
         self.sd = seed
@@ -93,7 +97,7 @@ class Departure:
         
         # Last records
         self.last_alt, self.last_cas = self.initial_alt, self.initial_cas
-        self.last_distance = great_circle_distance(self.initial_lat, self.initial_lon, self.target_lat, self.target_lon)
+        self.last_distance = great_circle_distance(self.initial_lat, self.initial_lon, self.vt_lat, self.vt_lon)
 
         return self.state_adapter(self.initial_lat, self.initial_lon, self.initial_alt,
                                    self.initial_heading, self.initial_bank_angle, self.initial_cas)
@@ -103,38 +107,31 @@ class Departure:
 
         total_fuel = 0
         total_noise = 0
-        for i in range(10):
-            self.aircraft.change_heading(3*action[0])       # min: -3deg/s, max: 3deg/s
-            self.aircraft.change_cas(2*(action[1]+1))       # max: 2 knots/s
-            self.aircraft.change_altitude(50*(action[2]+1)) # max: 50 ft/s
+        dead = False
+        penalty = 0
+        for _ in range(10):
+            self.aircraft.change_heading(2*action[0])       # min: -3deg/s, max: 3deg/s
+            self.aircraft.change_cas(2*(action[1]+1))       # max: 4 knots/s
+            self.aircraft.change_altitude(20*(action[2]+1)) # max: 40 ft/s
             lat, lon, alt, head, bank, cas, fuel, _ =  self.aircraft.update()
-            noise_impact = self.noise_pollution_level(lat, lon, alt)
-            total_noise += noise_impact
             self.global_time += 1
-            # dump to csv
-            self.save(lat, lon, alt, head, bank, cas, noise_impact)
-            total_fuel += fuel + 1
-            
+
             if not self.in_circle(lat, lon):
-                distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
-                # noise_impact = self.noise_pollution_level(lat, lon, alt)
-                reward = -total_fuel/4 - self.noise_factor*total_noise +\
-                        (self.last_distance - distance_to_target) + \
-                        (alt - self.last_alt)/1000 +\
-                        (cas - self.last_cas)/50
+                dead = True
+                noise_impact = 0
+                penalty = (self.target_alt - alt)/100 + (self.target_cas - cas)/10
+            else:
+                noise_impact = self.noise_pollution_level(lat, lon, alt)
+                total_fuel += fuel
+            
+            # dump to csv
+            total_noise += noise_impact
+            self.save(lat, lon, alt, head, bank, cas, noise_impact)
 
-                return self.state_adapter(lat, lon, alt, head, bank, cas), reward, True, True, (self.global_time, total_fuel, noise_impact)
-        
-        
-        distance_to_target = great_circle_distance(lat, lon, self.target_lat, self.target_lon)
-        # noise_impact = self.noise_pollution_level(lat, lon, alt)
+        distance_to_target = great_circle_distance(lat, lon, self.vt_lat, self.vt_lon)
         reward = -total_fuel/10 - self.noise_factor*total_noise +\
-                    4*(self.last_distance - distance_to_target) +\
-                    (alt - self.last_alt)/1000 +\
-                    (cas - self.last_cas)/50
-
-        # print(self.last_cas, cas)
-        # print(f"Reward {reward}: fuel {total_fuel}, noise {noise_impact}, distance {self.last_distance - distance_to_target}, alt {(alt - self.last_alt)/3281}, cas {(cas - self.last_cas)/20}")
+                    2*(self.last_distance - distance_to_target) +\
+                    (alt - self.last_alt)/400 + (cas - self.last_cas)/40 - penalty
 
         # Update
         self.last_alt, self.last_cas = alt, cas
@@ -142,10 +139,10 @@ class Departure:
         
         # Check out of time
         terminated = False
-        if self.global_time >= self.time_limit:
+        if self.global_time >= self.time_limit or dead:
             terminated = True
         
-        return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, False, (self.global_time, total_fuel, noise_impact)
+        return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, dead, (self.global_time, total_fuel, noise_impact)
 
     def save(self, lat, lon, alt, head, bank, cas, noise):
         """
@@ -192,7 +189,9 @@ class Departure:
         return influence
           
 # env = Departure()
-# env.reset()
+# # env.reset()
+# print(env.noise_pollution_level(22.28308448640028,114.13018354910147,7560.016530041714))
+
 # # # Heading, Acceleration (knot/s), altitude change (ft/s)
 # # # time0 = datetime.now()
 # # # for i in range(1000):
