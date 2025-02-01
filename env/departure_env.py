@@ -27,7 +27,7 @@ class Departure:
     state_dim = 7
     action_dim = 3
 
-    def __init__(self, task_name="departure", time=datetime(2020, 2, 2)):
+    def __init__(self, config, task_name="departure", time=datetime(2020, 2, 2)):
         """
         Initialize the Departure environment.
         
@@ -66,9 +66,12 @@ class Departure:
         # Final conditions
         self.target_lat, self.target_lon, self.target_alt, self.target_cas = 21.97805556, 114.9108333, 20000, 350
 
-        # Noise impact factor
-        self.noise_factor = 1.0
+        # Factors
+        self.noise_factor = config.noise_fuel_ratio
+        self.penalty_factor = config.penalty_fuel_ratio
+        self.noise_threshold = config.noise_threshold
         
+        # Noise model
         alt = np.array([200, 400, 630, 1000, 2000, 4000, 6300, 10000, 16000, 25000, 1e5, 1e6]) * 0.3048
         thrust = np.array([0, 35684, 48263, 60841, 73419, 85997, 98522, 110000]) * 4.448222
         noise = np.array([[0.000000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.0, 0.0],
@@ -185,7 +188,7 @@ class Departure:
             self.global_time += 1
             
             total_fuel += fuel
-            noise_impact = self.noise_pollution_level(lat, lon, alt, thrust)
+            noise_impact = self.noise_pollution_level(lat, lon, alt, thrust, threshold=self.noise_threshold)
             total_noise += noise_impact
             nfz_penalty = self.compute_nfz_penalty(lat, lon)
             total_penalty += nfz_penalty
@@ -202,7 +205,7 @@ class Departure:
             distance_gain = great_circle_distance(self.last_lat, self.last_lon, self.target_lat, self.target_lon) \
                             - great_circle_distance(lat, lon, self.target_lat, self.target_lon)
 
-        reward = -total_fuel/10 - self.noise_factor*total_noise - total_penalty + \
+        reward = -total_fuel/10 - self.noise_factor*total_noise - self.penalty_factor*total_penalty + \
                     2*distance_gain + (alt - self.last_alt)/80 + (cas - self.last_cas)/4
 
         # Update
@@ -215,36 +218,6 @@ class Departure:
             terminated = True
         
         return self.state_adapter(lat, lon, alt, head, bank, cas), reward, terminated, dead, (self.global_time, total_fuel, noise_impact, total_penalty)
-
-    def step_evaluate(self, action):
-        assert len(action) == 3
-        dead = False
-        total_fuel = 0
-        total_noise = 0
-        total_penalty = 0
-        for _ in range(10):
-            self.aircraft.change_heading(2*action[0])       # min: -3deg/s, max: 3deg/s
-            self.aircraft.change_cas(2*(action[1]+1))       # max: 4 knots/s
-            self.aircraft.change_altitude(20*(action[2]+1)) # max: 40 ft/s
-            lat, lon, alt, head, bank, cas, fuel, thrust =  self.aircraft.update()
-            self.global_time += 1
-            noise_impact = self.noise_pollution_level(lat, lon, alt, thrust)
-            nfz_penalty = self.compute_nfz_penalty(lat, lon)
-            print(lat, lon, alt, thrust, noise_impact, nfz_penalty)
-            self.save(lat, lon, alt, head, bank, cas, thrust, noise_impact, nfz_penalty)
-            total_fuel += fuel
-            total_noise += noise_impact
-            total_penalty += nfz_penalty
-            if not self.in_circle(lat, lon):
-                dead = True
-                break
-            
-        # Check out of time
-        terminated = False
-        if (self.global_time >= self.time_limit) or dead:
-            terminated = True
-        
-        return self.state_adapter(lat, lon, alt, head, bank, cas), terminated, (total_fuel, total_noise, total_penalty)
 
     def save(self, lat, lon, alt, head, bank, cas, thrust, noise, nfz_penalty):
         """
