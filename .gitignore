@@ -4,3 +4,6 @@ post_processing
 cruise
 model
 __pycache__
+
+env/topography_data/*
+env/performance/BADA/*
