@@ -26,7 +26,7 @@ To set up the environment, ensure you have Python version >3.10 installed. You c
 
 ## Training
 
-Before training, you need to apply for a BADA license at [EUROCONTROL BADA](https://www.eurocontrol.int/model/bada) and place the BADA files into `./env/performance/BADA/`. Additionally, download the population and terrain data from [this link](https://hkustconnect-my.sharepoint.com/:f:/g/personal/hcnguyenaa_connect_ust_hk/EqTiJTiS_tBFlyeS_dAHofEBKHlRlFDME-W5cVnV_3MPRw?e=rfPaaI) and put them in `./env/data/`.
+Before training, you need to apply for a BADA license at [EUROCONTROL BADA](https://www.eurocontrol.int/model/bada) and place the BADA files into `./env/performance/BADA/`. Additionally, download the population and terrain data from [this link](https://hkustconnect-my.sharepoint.com/:f:/g/personal/hcnguyenaa_connect_ust_hk/EqTiJTiS_tBFlyeS_dAHofEBKHlRlFDME-W5cVnV_3MPRw?e=rfPaaI) and put them in `./env/topography_data/`.
 
 To train the model, use the following command:
 ```sh
